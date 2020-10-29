@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OperationService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">atm</a> &gt; <a href="index.source.html" class="el_package">com.aeh.api.services</a> &gt; <span class="el_source">OperationService.java</span></div><h1>OperationService.java</h1><pre class="source lang-java linenums">package com.aeh.api.services;
+
+import com.aeh.api.models.Entry;
+import com.aeh.api.payloads.ApiResponse;
+import com.aeh.api.repositories.EntryRepository;
+import com.aeh.api.utils.Pair;
+import com.aeh.api.validations.InputValidator;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@Component
+public class OperationService {
+    private EntryRepository entryRepository;
+    private InputValidator inputValidator;
+
+    @Autowired
+<span class="fc" id="L24">    public OperationService(final EntryRepository entryRepository, final InputValidator inputValidator) {</span>
+<span class="fc" id="L25">        this.entryRepository = entryRepository;</span>
+<span class="fc" id="L26">        this.inputValidator = inputValidator;</span>
+<span class="fc" id="L27">    }</span>
+
+    public ResponseEntity&lt;List&lt;Entry&gt;&gt; getAllEntries() {
+<span class="fc" id="L30">        return ResponseEntity.ok(entryRepository.findAll());</span>
+    }
+
+    public ResponseEntity&lt;ApiResponse&gt; withdraw(Integer amount) {
+<span class="fc" id="L34">        HashMap&lt;Integer, Integer&gt; responseBody = new HashMap&lt;&gt;();</span>
+        // all available denominations in the ATM
+<span class="fc" id="L36">        List&lt;Integer&gt; denominationList = entryRepository.findAll().stream().map(Entry::getDenomination).collect(Collectors.toList());</span>
+        // current values in the database
+<span class="fc" id="L38">        Map&lt;Integer, Integer&gt; currentEntries = entryRepository.findAll().stream().collect(Collectors.toMap(Entry::getDenomination, Entry::getAmount));</span>
+
+<span class="fc" id="L40">        denominationList.sort(Collections.reverseOrder());</span>
+
+        // total value of all the bills in the ATM
+<span class="fc" id="L43">        int currentAmount = 0;</span>
+<span class="fc" id="L44">        int denominationCount = 0;</span>
+
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        for(Map.Entry&lt;Integer, Integer&gt; e : currentEntries.entrySet()) {</span>
+<span class="fc" id="L47">            currentAmount += e.getKey() * e.getValue();</span>
+<span class="fc" id="L48">        }</span>
+
+        // check if the ATM has sufficient funds
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if(amount &gt; currentAmount) {</span>
+<span class="fc" id="L52">            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, &quot;The ATM has insufficient funds&quot;));</span>
+        }
+
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if(amount &lt; 0) {</span>
+<span class="fc" id="L56">            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, &quot;Input values cannot be negative numbers&quot;));</span>
+        }
+
+<span class="pc bpc" id="L59" title="1 of 4 branches missed.">        for(int i = 0; i &lt; denominationList.size() &amp;&amp; amount != 0; ++i) {</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">            if(amount &gt;= denominationList.get(i)) {</span>
+<span class="fc" id="L61">                denominationCount = amount/denominationList.get(i);</span>
+
+                // check if there are enough bills of a specific denomination in the ATM; if false, check the next denomination
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">                if(currentEntries.get(denominationList.get(i)) - denominationCount &lt; 0) {</span>
+<span class="nc" id="L65">                    continue;</span>
+                }
+
+                // update the values in the database
+<span class="fc" id="L69">                Entry entryToUpdate = entryRepository.findByDenomination(denominationList.get(i));</span>
+<span class="fc" id="L70">                entryToUpdate.setAmount(entryToUpdate.getAmount() - denominationCount);</span>
+<span class="fc" id="L71">                entryRepository.save(entryToUpdate);</span>
+
+                // update the response body
+<span class="fc" id="L74">                responseBody.put(denominationList.get(i), denominationCount);</span>
+            }
+<span class="fc" id="L76">            amount = amount % denominationList.get(i);</span>
+        }
+
+        // if at the end of the computation the denominationCount equals zero, it means the the ATM does not have the correct bills to complete the request
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        if(denominationCount == 0) {</span>
+<span class="fc" id="L81">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, &quot;The ATM does not have the correct denomination to complete the request&quot;));</span>
+        }
+
+<span class="fc" id="L84">        return ResponseEntity.ok(new ApiResponse(true, responseBody.toString()));</span>
+    }
+
+    public ResponseEntity&lt;ApiResponse&gt; add(HashMap&lt;String, Integer&gt; requestBody) {
+<span class="fc" id="L88">        Optional&lt;Integer&gt; currentCapacity = entryRepository.getCount();</span>
+        Pair&lt;Boolean, String&gt; result;
+
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">        if(currentCapacity.isPresent()) {</span>
+<span class="fc" id="L92">             result = inputValidator.validateInput(requestBody, currentCapacity.get());</span>
+        } else {
+<span class="nc" id="L94">            result = inputValidator.validateInput(requestBody, 0);</span>
+        }
+
+<span class="fc bfc" id="L97" title="All 2 branches covered.">        if(!result.getFirst()) {</span>
+<span class="fc" id="L98">            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(result.getFirst(), result.getSecond()));</span>
+        }
+
+<span class="fc bfc" id="L101" title="All 2 branches covered.">        for(Map.Entry&lt;String, Integer&gt; row: requestBody.entrySet()) {</span>
+<span class="fc" id="L102">            Entry entryToUpdate = entryRepository.findByDenomination(Integer.parseInt(row.getKey()));</span>
+
+            // if the denomination is not found, create entry
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">            if(entryToUpdate == null) {</span>
+<span class="nc" id="L106">                entryToUpdate = new Entry(Integer.parseInt(row.getKey()), row.getValue());</span>
+            } else {
+                // update entry
+<span class="fc" id="L109">                entryToUpdate.setAmount(entryToUpdate.getAmount() + row.getValue());</span>
+            }
+
+<span class="fc" id="L112">            entryRepository.save(entryToUpdate);</span>
+<span class="fc" id="L113">        }</span>
+
+<span class="fc" id="L115">        return ResponseEntity.ok(new ApiResponse(result.getFirst(), result.getSecond()));</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>

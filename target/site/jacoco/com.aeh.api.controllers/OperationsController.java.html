@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OperationsController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">atm</a> &gt; <a href="index.source.html" class="el_package">com.aeh.api.controllers</a> &gt; <span class="el_source">OperationsController.java</span></div><h1>OperationsController.java</h1><pre class="source lang-java linenums">package com.aeh.api.controllers;
+
+import com.aeh.api.models.Entry;
+import com.aeh.api.payloads.ApiResponse;
+import com.aeh.api.services.OperationService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+
+@RestController
+@RequestMapping(value = &quot;/operations&quot;)
+public class OperationsController {
+
+    private OperationService operationService;
+
+    @Autowired
+<span class="fc" id="L20">    public OperationsController(final OperationService operationService) {</span>
+<span class="fc" id="L21">        this.operationService = operationService;</span>
+<span class="fc" id="L22">    }</span>
+
+    @GetMapping(&quot;/all&quot;)
+    public ResponseEntity&lt;List&lt;Entry&gt;&gt; getAll() {
+<span class="fc" id="L26">        return operationService.getAllEntries();</span>
+    }
+
+    @GetMapping(&quot;/withdraw/{amount}&quot;)
+    public ResponseEntity&lt;ApiResponse&gt; withdrawCash(@PathVariable Integer amount) {
+<span class="fc" id="L31">        return operationService.withdraw(amount);</span>
+    }
+
+    @PostMapping(&quot;/add&quot;)
+    public ResponseEntity&lt;ApiResponse&gt; addCash(@RequestBody HashMap&lt;String, Integer&gt; requestBody) {
+<span class="fc" id="L36">        return operationService.add(requestBody);</span>
+    }
+ }
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.2.201808211720</span></div></body></html>
