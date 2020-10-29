@@ -130,5 +130,6 @@ The API was tested using Postman.
 
 No integration tests were performed.
 
+## Code coverage
 
- 
+The code coverage report can be found in the "site/" directory.
